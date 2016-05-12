@@ -24,6 +24,9 @@ def ID3(data_set, attribute_metadata, numerical_splits_count, depth):
     for [data, node] in queue:
         print "Queue:", len(queue)
         # If data is homogenous, set as leaf node
+        if len(data) == 0:
+            continue
+
         homogenous_value = check_homogenous(data)
         if homogenous_value is not None:
             print 'homo! depth=', node.depth
@@ -79,8 +82,10 @@ def ID3(data_set, attribute_metadata, numerical_splits_count, depth):
             left_data  = numerical_split[0]
             right_data = numerical_split[1]
 
+
             # Set node.children to child nodes
             node.children = [left_node, right_node]
+
 
             # Append child nodes to queue
             queue.append([left_data,  left_node])
@@ -186,7 +191,7 @@ def pick_best_attribute(data_set, attribute_metadata, numerical_splits_count):
 
     listOfKeys = finaldict.keys()
 
-    maxGainRatio = -1
+    maxGainRatio = 0
     maxAttribute = False
     maxAttrSplitValue = [0]
     for e in range(len(finalArray)):
@@ -203,7 +208,7 @@ def pick_best_attribute(data_set, attribute_metadata, numerical_splits_count):
         # gain_ratio is value of gain ratio
         gain_ratio = gainThreshold[0]
 
-        if gain_ratio > maxGainRatio and numerical_splits_count[finaldict[attributeName]] > 0:
+        if gain_ratio >= maxGainRatio:
             maxGainRatio = gain_ratio
             maxAttribute = attributeName
             # this will either be False of the splitValue
