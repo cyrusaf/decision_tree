@@ -205,7 +205,18 @@ def check_classify():
 		i += 1
 	else:
 		print "Failed 2"
-	if i == 2:
+        nN = Node()
+        nN.decision_attribute = 3
+        nN.is_nominal = False
+        nN.name = "There is more to life than attributes"
+        nN.children = [n1, n]
+        nN.splitting_value = 75.0
+        if nN.classify([0, 1, 0, 81.7]) == 1:
+        	print "Passed 3"
+                i += 1
+        else:
+		print "Failed 3"
+	if i == 3:
 		print "All tests passed"
 	else:
 		print "Not all tests passed, look at classify"
@@ -244,4 +255,14 @@ def check_ID3():
       print "not all tests passed, please see ID3."
    else:
       print "all tests passed."
+
+   attribute_metadata = [{'name': "winner",'is_nominal': True},{'name': "weather",'is_nominal': True}]
+   data_set = [[1, 0], [0, 1], [0, -1], [0, -1], [0, 1], [1, 0], [1, 0], [1, 1], [1, 0], [0, 1], [1, -1]]
+   numerical_splits_count = [5, 1]
+   n = ID3(data_set, attribute_metadata, numerical_splits_count, 1)
+   if n and [n.classify(x) == x[0] for x in data_set] == [True, True, True, True, True, True, True, False, True, True, False]:
+   	print "Passed nominal test"
+   else:
+   	print "Failed nominal test"
+
 test = grader( **options )

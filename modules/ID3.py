@@ -16,7 +16,22 @@ def ID3(data_set, attribute_metadata, numerical_splits_count, depth):
     ========================================================================================================
 
     '''
-    # code here
+    if len(data_set) == 0:
+        return #default
+
+    tempValue = check_homogenous(data_set)
+    if tempValue != None:
+        return tempValue
+
+    if len(attribute_metadata) == 0:
+        return mode(data_set)
+
+
+    
+
+
+    
+
     pass
 
 def check_homogenous(data_set):
@@ -29,8 +44,15 @@ def check_homogenous(data_set):
     Output: Return either the homogenous attribute or None
     ========================================================================================================
      '''
-    # Your code here
-    pass
+    first_val = data_set[0]
+    #value of first element in data set
+    value = first_val[0]
+    #for loop that exits and returns None any time a value isn't equal to initial value
+    for e in data_set:
+        if e[0] != value:
+            return None
+    return value 
+
 # ======== Test Cases =============================
 # data_set = [[0],[1],[1],[1],[1],[1]]
 # check_homogenous(data_set) ==  None
@@ -52,14 +74,112 @@ def pick_best_attribute(data_set, attribute_metadata, numerical_splits_count):
     Output: best attribute, split value if numeric
     ========================================================================================================
     '''
-    # Your code here
-    pass
+    # need to go through all the attributes in attribute metadata
+    # if there are no numeric attributes the second value of output is False
+
+    # use this number for looping through the metadata to find numeric or not
+    num_attrs = len(attribute_metadata)
+
+    finalArray = []
+
+    #gainResults = []
+    for e in range(1, num_attrs):
+
+        # tuple with gain ratio and False if nominal and split value if numeric
+        gainResult = []
+        gainResult2 = []
+
+        # name_nominal is a list with the first element being the attribute name and the second element
+        # being a boolean True meaning the attribute is nominal False meaning is numeric
+        name_nominal = attribute_metadata[e].values()
+
+        # if this attribute is a nominal attr evaluate with gain_ratio_nominal
+        if name_nominal[0] == True:
+
+            tempGainRatio = gain_ratio_nominal(data_set, e)
+
+            #final result here is [gain ratio, False]
+            gainResult.append(tempGainRatio)
+            gainResult.append(False)
+
+
+            # looks like (attributeName, {gain ratio, False})
+            # name_nominal[1] is the attribute name
+            finalArray.append((name_nominal[1], gainResult))
+
+        else:
+            tempGainRatio2 = gain_ratio_numeric(data_set, e, 1)
+
+            # below is gain_ratio
+            gainResult2.append(tempGainRatio2[0])
+            gainResult2.append(tempGainRatio2[1])
+
+
+
+            # looks like (attributeName, {gain ratio, split value})
+            
+            finalArray.append((name_nominal[1], gainResult2))
+
+
+    maxGainRatio = 0
+    maxAttribute = False
+    maxAttrSplitValue = [0]
+    for e in range(len(finalArray)):
+
+        temp = finalArray[e]
+
+        attributeName = temp[0]
+        # gainDict is dict where {gainRatio: False/splitvalue}
+        gainThreshold = temp[1]
+        # gain_ratio is value of gain ratio
+        gain_ratio = gainThreshold[0]
+
+        if gain_ratio > maxGainRatio:
+            maxGainRatio = gain_ratio
+            maxAttribute = attributeName
+            # this will either be False of the splitValue
+
+            maxAttrSplitValue[0] = gainThreshold[1]
+
+
+
+    # need to cycle through attribute metadata create dict {name: index}
+    finaldict = {}
+    for i,d in enumerate(attribute_metadata):
+        # should make it so that {winner : 0} etc 
+        #print d.values()[0]
+
+        finaldict[d.values()[1]] = i 
+
+    listOfKeys = finaldict.keys()
+
+
+    for key in listOfKeys:
+        if maxAttribute == key:
+            maxAttribute = finaldict[key]
+
+
+
+    if maxAttrSplitValue[0] == 0:
+       del maxAttrSplitValue[0]
+       maxAttrSplitValue.append(False)
+
+
+    #return (maxAttribute, maxAttrSplitValue[0])
+    return (maxAttribute, maxAttrSplitValue[0])
+
+    # best attribute is calculated using gain_ratio_nominal or gain_ratio_numeric
+
+    # if attribute is numerical send split count through 
+
 
 # # ======== Test Cases =============================
 # numerical_splits_count = [20,20]
+
 # attribute_metadata = [{'name': "winner",'is_nominal': True},{'name': "opprundifferential",'is_nominal': False}]
 # data_set = [[1, 0.27], [0, 0.42], [0, 0.86], [0, 0.68], [0, 0.04], [1, 0.01], [1, 0.33], [1, 0.42], [0, 0.51], [1, 0.4]]
 # pick_best_attribute(data_set, attribute_metadata, numerical_splits_count) == (1, 0.51)
+
 # attribute_metadata = [{'name': "winner",'is_nominal': True},{'name': "weather",'is_nominal': True}]
 # data_set = [[0, 0], [1, 0], [0, 2], [0, 2], [0, 3], [1, 1], [0, 4], [0, 2], [1, 2], [1, 5]]
 # pick_best_attribute(data_set, attribute_metadata, numerical_splits_count) == (1, False)
@@ -190,8 +310,10 @@ def gain_ratio_nominal(data_set, attribute):
 # ======== Test case =============================
 # data_set, attr = [[1, 2], [1, 0], [1, 0], [0, 2], [0, 2], [0, 0], [1, 3], [0, 4], [0, 3], [1, 1]], 1
 # gain_ratio_nominal(data_set,attr) == 0.11470666361703151
+
 # data_set, attr = [[1, 2], [1, 2], [0, 4], [0, 0], [0, 1], [0, 3], [0, 0], [0, 0], [0, 4], [0, 2]], 1
 # gain_ratio_nominal(data_set,attr) == 0.2056423328155741
+
 # data_set, attr = [[0, 3], [0, 3], [0, 3], [0, 4], [0, 4], [0, 4], [0, 0], [0, 2], [1, 4], [0, 4]], 1
 # gain_ratio_nominal(data_set,attr) == 0.06409559743967516
 
@@ -244,8 +366,10 @@ def gain_ratio_numeric(data_set, attribute, steps):
 # ======== Test case =============================
 # data_set,attr,step = [[0,0.05], [1,0.17], [1,0.64], [0,0.38], [0,0.19], [1,0.68], [1,0.69], [1,0.17], [1,0.4], [0,0.53]], 1, 2
 # gain_ratio_numeric(data_set,attr,step) == (0.31918053332474033, 0.64)
+
 # data_set,attr,step = [[1, 0.35], [1, 0.24], [0, 0.67], [0, 0.36], [1, 0.94], [1, 0.4], [1, 0.15], [0, 0.1], [1, 0.61], [1, 0.17]], 1, 4
 # gain_ratio_numeric(data_set,attr,step) == (0.11689800358692547, 0.94)
+
 # data_set,attr,step = [[1, 0.1], [0, 0.29], [1, 0.03], [0, 0.47], [1, 0.25], [1, 0.12], [1, 0.67], [1, 0.73], [1, 0.85], [1, 0.25]], 1, 1
 # gain_ratio_numeric(data_set,attr,step) == (0.23645279766002802, 0.29)
 
