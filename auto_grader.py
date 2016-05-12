@@ -236,6 +236,9 @@ def check_ID3():
    data_set = [[1, 0.27], [0, 0.42], [0, 0.86], [0, 0.68], [0, 0.04], [1, 0.01], [1, 0.33], [1, 0.42], [1, 0.42], [0, 0.51], [1, 0.4]]
    numerical_splits_count = [1, 1]
    n = ID3(data_set, attribute_metadata, numerical_splits_count, 5)
+   print data_set
+   print [n.classify(x) == x[0] for x in data_set]
+   print [True, False, True, True, False, True, True, True, True, True, True]
    if n and [n.classify(x) == x[0] for x in data_set] == [True, False, True, True, False, True, True, True, True, True, True]:
       print "Passed 2"
    else:
@@ -246,6 +249,8 @@ def check_ID3():
    data_set = [[1, 0.27], [0, 0.42], [0, 0.86], [0, 0.68], [0, 0.04], [1, 0.01], [1, 0.33], [1, 0.42], [1, 0.42], [0, 0.51], [1, 0.4]]
    numerical_splits_count = [5, 5]
    n = ID3(data_set, attribute_metadata, numerical_splits_count, 5)
+   print [n.classify(x) == x[0] for x in data_set]
+   print [True, False, True, True, True, True, True, True, True, True, True]
    if n and [n.classify(x) == x[0] for x in data_set] == [True, False, True, True, True, True, True, True, True, True, True]:
       print "Passed 3"
    else:

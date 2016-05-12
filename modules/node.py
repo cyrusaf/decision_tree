@@ -2,8 +2,8 @@
 # =====================================
 # Class node attributes:
 # ----------------------------
-# children - a list of 2 nodes if numeric, and a dictionary (key=attribute value, value=node) if nominal.  
-#            For numeric, the 0 index holds examples < the splitting_value, the 
+# children - a list of 2 nodes if numeric, and a dictionary (key=attribute value, value=node) if nominal.
+#            For numeric, the 0 index holds examples < the splitting_value, the
 #            index holds examples >= the splitting value
 #
 # label - is the output label (0 or 1 for
@@ -33,65 +33,46 @@ class Node:
         self.splitting_value = None
         self.children = {}
         self.name = None
+        self.depth = 0
 
     def classify(self, instance):
         '''
         given a single observation, will return the output of the tree
         '''
-        #child dict is empty --> False so we have no children and are a lead node with label
-        if not self.children:
-            print len(self.children)
-            print "THERE"
+
+        if self.label is not None:
             return self.label
 
-        print len(instance)
-        # decision_index = self.decision_attribute
-        # print "HHHHHHHH"
-        # truth = instance[decision_index]
+        check_val = instance[self.decision_attribute]
 
-        # if self.is_nominal:
-        #     print "it is nominal"
-        #     #something here with children and splitting
-        #     tempKey = self.decision_attribute
-        #     print "============"
-        #     print tempKey
-        #     print "============"
-        #     for key, value in self.children.iteritems():
-        #         if tempKey == key:
-        #             print key
-        #             print value
-        #             print "HERE"
-        #             self.classify(value)
-        
-        # print "boring"
-        # print self.decision_attribute
-        # tempIndex = deepcopy(self.decision_attribute)
-        # tempValue = deepcopy(instance[tempIndex])
+        # If nominal
+        if self.is_nominal:
+            return self.children[check_val].classify(instance)
 
-        # we are at the case where we have children and the decision attribute is numeric
-        if  error < self.splitting_value:
-            print "HERE"
-            self.classify(self.children[0])
+        # If numerical
         else:
-            print "wait"
-            self.classify(self.children[1])
-
-
-
-
-
-
-
-
-        
+            if check_val < self.splitting_value:
+                return self.children[0].classify(instance)
+            else:
+                return self.children[1].classify(instance)
 
     def print_tree(self, indent = 0):
         '''
         returns a string of the entire tree in human readable form
         IMPLEMENTING THIS FUNCTION IS OPTIONAL
         '''
-        # Your code here
-        pass
+        if self.label is not None:
+            print "\n" + ("  " * indent) + "Classify: " + str(self.label), self
+            return
+
+        if self.is_nominal:
+            print "\n" + ("  " * indent) + "Nominal: ", self, self.children
+            for key, child in self.children.iteritems():
+                child.print_tree(indent+1)
+        else:
+            print "\n" + ("  " * indent) + "Numerical: ", self, self.children
+            for child in self.children:
+                child.print_tree(indent+1)
 
 
     def print_dnf_tree(self):

@@ -16,23 +16,78 @@ def ID3(data_set, attribute_metadata, numerical_splits_count, depth):
     ========================================================================================================
 
     '''
-    if len(data_set) == 0:
-        return #default
+    print "==== DEPTH ====", depth
+    root_node = Node()
+    queue = [[data_set, root_node]]
 
-    tempValue = check_homogenous(data_set)
-    if tempValue != None:
-        return tempValue
+    # Loop through queue
+    for [data, node] in queue:
+        print "Queue:", len(queue)
+        # If data is homogenous, set as leaf node
+        homogenous_value = check_homogenous(data)
+        if homogenous_value is not None:
+            print 'homo! depth=', node.depth
+            node.label = homogenous_value
+            continue
 
-    if len(attribute_metadata) == 0:
-        return mode(data_set)
+        # If node.depth == depth
+        if node.depth == depth:
+            print "Depth:", node.depth, data, mode(data)
+            node.label = mode(data)
+            continue
 
+        # If data is not homogenous, split and create new nodes to add to queue
+        best_attribute = pick_best_attribute(data, attribute_metadata, numerical_splits_count)
 
-    
+        # If split_counts == 0...
+        if best_attribute == False:
+            print "=== SPLIT COUNT FALSE ==="
+            node.label = mode(data)
+            continue
 
+        # Create new nodes
+        [best_i, split_value] = best_attribute
+        if best_i == 0:
+            print "============= UH OH ================"
+        numerical_splits_count[best_i] -= 1
+        node.decision_attribute = best_i
 
-    
+        # Check if best_attribute is nominal
+        if split_value == False:
+            node.is_nominal = True
 
-    pass
+            # Set node.children to child nodes
+            nominal_split = split_on_nominal(data, best_i)
+            for [attr_val, new_data] in nominal_split.iteritems():
+                new_node = Node()
+                new_node.depth = node.depth+1
+                node.children[attr_val] = new_node
+
+                # Append child nodes to queue
+                queue.append([new_data, new_node])
+
+        # If best_attribute is numerical
+        else:
+            node.is_nominal  = False
+            node.split_value = split_value
+
+            numerical_split = split_on_numerical(data, best_i, split_value)
+            left_node  = Node()
+            right_node = Node()
+            left_node.depth  = node.depth +1
+            right_node.depth = node.depth +1
+            left_data  = numerical_split[0]
+            right_data = numerical_split[1]
+
+            # Set node.children to child nodes
+            node.children = [left_node, right_node]
+
+            # Append child nodes to queue
+            queue.append([left_data,  left_node])
+            queue.append([right_data, right_node])
+
+    root_node.print_tree()
+    return root_node
 
 def check_homogenous(data_set):
     '''
@@ -51,7 +106,7 @@ def check_homogenous(data_set):
     for e in data_set:
         if e[0] != value:
             return None
-    return value 
+    return value
 
 # ======== Test Cases =============================
 # data_set = [[0],[1],[1],[1],[1],[1]]
@@ -117,11 +172,21 @@ def pick_best_attribute(data_set, attribute_metadata, numerical_splits_count):
 
 
             # looks like (attributeName, {gain ratio, split value})
-            
+
             finalArray.append((name_nominal[1], gainResult2))
 
 
-    maxGainRatio = 0
+    # need to cycle through attribute metadata create dict {name: index}
+    finaldict = {}
+    for i,d in enumerate(attribute_metadata):
+        # should make it so that {winner : 0} etc
+        #print d.values()[0]
+
+        finaldict[d.values()[1]] = i
+
+    listOfKeys = finaldict.keys()
+
+    maxGainRatio = -1
     maxAttribute = False
     maxAttrSplitValue = [0]
     for e in range(len(finalArray)):
@@ -129,12 +194,16 @@ def pick_best_attribute(data_set, attribute_metadata, numerical_splits_count):
         temp = finalArray[e]
 
         attributeName = temp[0]
+        print attributeName
+        if finaldict[attributeName] == 0:
+            print "SKIPPING"
+            continue
         # gainDict is dict where {gainRatio: False/splitvalue}
         gainThreshold = temp[1]
         # gain_ratio is value of gain ratio
         gain_ratio = gainThreshold[0]
 
-        if gain_ratio > maxGainRatio:
+        if gain_ratio > maxGainRatio and numerical_splits_count[finaldict[attributeName]] > 0:
             maxGainRatio = gain_ratio
             maxAttribute = attributeName
             # this will either be False of the splitValue
@@ -143,20 +212,16 @@ def pick_best_attribute(data_set, attribute_metadata, numerical_splits_count):
 
 
 
-    # need to cycle through attribute metadata create dict {name: index}
-    finaldict = {}
-    for i,d in enumerate(attribute_metadata):
-        # should make it so that {winner : 0} etc 
-        #print d.values()[0]
 
-        finaldict[d.values()[1]] = i 
-
-    listOfKeys = finaldict.keys()
-
+    if maxAttribute == False:
+        print "false"
+        print data_set
 
     for key in listOfKeys:
         if maxAttribute == key:
+            print "Max:", maxAttribute
             maxAttribute = finaldict[key]
+
 
 
 
@@ -164,13 +229,15 @@ def pick_best_attribute(data_set, attribute_metadata, numerical_splits_count):
        del maxAttrSplitValue[0]
        maxAttrSplitValue.append(False)
 
+    if numerical_splits_count[maxAttribute] == 0:
+        return False
 
     #return (maxAttribute, maxAttrSplitValue[0])
     return (maxAttribute, maxAttrSplitValue[0])
 
     # best attribute is calculated using gain_ratio_nominal or gain_ratio_numeric
 
-    # if attribute is numerical send split count through 
+    # if attribute is numerical send split count through
 
 
 # # ======== Test Cases =============================
@@ -304,6 +371,9 @@ def gain_ratio_nominal(data_set, attribute):
 
     gain += entropy(data_set)
     split_info = entropy(map(lambda x: [x[1]], data_set))
+    if split_info == 0:
+        return 0
+
     gain_ratio = gain/split_info
 
     return gain_ratio
