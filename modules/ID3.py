@@ -2,6 +2,7 @@ import math
 from node import Node
 import sys
 from copy import deepcopy
+from operator import itemgetter
 
 def ID3(data_set, attribute_metadata, numerical_splits_count, depth):
     '''
@@ -16,83 +17,67 @@ def ID3(data_set, attribute_metadata, numerical_splits_count, depth):
     ========================================================================================================
 
     '''
-    print "==== DEPTH ====", depth
-    root_node = Node()
-    queue = [[data_set, root_node]]
+    # need to keep track of numerical_splits_count
+    # decrease corresponding numerical_splits_count entry each time a numeric entry is split on
 
-    # Loop through queue
-    for [data, node] in queue:
-        print "Queue:", len(queue)
-        # If data is homogenous, set as leaf node
-        if len(data) == 0:
-            continue
+    if data_set == None:
+        return None
+    if len(data_set) == 0:
+        return None
 
-        homogenous_value = check_homogenous(data)
-        if homogenous_value is not None:
-            print 'homo! depth=', node.depth
-            node.label = homogenous_value
-            continue
+    n = Node()
 
-        # If node.depth == depth
-        if node.depth == depth:
-            print "Depth:", node.depth, data, mode(data)
-            node.label = mode(data)
-            continue
+    homogenous_value = check_homogenous(data_set)
+    if homogenous_value != None:
+        n.label = homogenous_value
+        return n
+    
+    if depth == 0:
+        n.label = mode(data_set)
+        return n
 
-        # If data is not homogenous, split and create new nodes to add to queue
-        best_attribute = pick_best_attribute(data, attribute_metadata, numerical_splits_count)
+    (best_i, split_value) = pick_best_attribute(data_set, attribute_metadata, numerical_splits_count)
 
-        # If split_counts == 0...
-        if best_attribute == False:
-            print "=== SPLIT COUNT FALSE ==="
-            node.label = mode(data)
-            continue
+    if best_i == False:
+        n.label = mode(data_set)
+        return n
 
-        # Create new nodes
-        [best_i, split_value] = best_attribute
-        if best_i == 0:
-            print "============= UH OH ================"
+    n.label = None
+
+    # setting decision attribute to index of the attribute with the highest gain ratio
+    n.decision_attribute = best_i
+    n.name = attribute_metadata[best_i]['name']
+
+    # setting splitting_value to the split_value from pick_best_attribute
+    n.splitting_value = split_value
+
+    # if split_value is not false then we are dealing with a numeric
+    if split_value != False:      
+        n.is_nominal = False
+        
+        left_data, right_data = split_on_numerical (data_set, best_i, split_value)
+
         numerical_splits_count[best_i] -= 1
-        node.decision_attribute = best_i
 
-        # Check if best_attribute is nominal
-        if split_value == False:
-            node.is_nominal = True
+        left_node = ID3(left_data, attribute_metadata, numerical_splits_count, depth-1)
+        right_node = ID3(right_data, attribute_metadata, numerical_splits_count, depth-1)
+        n.children = []
 
-            # Set node.children to child nodes
-            nominal_split = split_on_nominal(data, best_i)
-            for [attr_val, new_data] in nominal_split.iteritems():
-                new_node = Node()
-                new_node.depth = node.depth+1
-                node.children[attr_val] = new_node
+        n.children.append(left_node)
+        n.children.append(right_node)
 
-                # Append child nodes to queue
-                queue.append([new_data, new_node])
-
-        # If best_attribute is numerical
-        else:
-            node.is_nominal  = False
-            node.split_value = split_value
-
-            numerical_split = split_on_numerical(data, best_i, split_value)
-            left_node  = Node()
-            right_node = Node()
-            left_node.depth  = node.depth +1
-            right_node.depth = node.depth +1
-            left_data  = numerical_split[0]
-            right_data = numerical_split[1]
-
-
-            # Set node.children to child nodes
-            node.children = [left_node, right_node]
-
-
-            # Append child nodes to queue
-            queue.append([left_data,  left_node])
-            queue.append([right_data, right_node])
-
-    root_node.print_tree()
-    return root_node
+        return n
+        
+    else:
+        n.is_nominal = True
+        kid_set = split_on_nominal(data_set, best_i)
+        n.children = {}
+        for key, val in kid_set.iteritems():
+            newNode = ID3(val, attribute_metadata, numerical_splits_count, depth - 1)
+            if newNode != None:
+                n.children[key] = newNode
+        return n
+    
 
 def check_homogenous(data_set):
     '''
@@ -151,98 +136,48 @@ def pick_best_attribute(data_set, attribute_metadata, numerical_splits_count):
 
         # name_nominal is a list with the first element being the attribute name and the second element
         # being a boolean True meaning the attribute is nominal False meaning is numeric
+        # looks like [F/T bool, attributeName]
         name_nominal = attribute_metadata[e].values()
 
         # if this attribute is a nominal attr evaluate with gain_ratio_nominal
         if name_nominal[0] == True:
-
             tempGainRatio = gain_ratio_nominal(data_set, e)
 
-            #final result here is [gain ratio, False]
-            gainResult.append(tempGainRatio)
-            gainResult.append(False)
-
-
-            # looks like (attributeName, {gain ratio, False})
-            # name_nominal[1] is the attribute name
-            finalArray.append((name_nominal[1], gainResult))
+            # elements of finalArray look like (Attribute index, gainRatio, splitValue)
+            finalArray.append((e, tempGainRatio, False))
 
         else:
             tempGainRatio2 = gain_ratio_numeric(data_set, e, 1)
 
-            # below is gain_ratio
-            gainResult2.append(tempGainRatio2[0])
-            gainResult2.append(tempGainRatio2[1])
+            # elements of finalArray look like (Attribute index, gainRatio, splitValue)
+            finalArray.append((e, tempGainRatio2[0], tempGainRatio2[1]))
 
 
-
-            # looks like (attributeName, {gain ratio, split value})
-
-            finalArray.append((name_nominal[1], gainResult2))
+    # sort finalArray by gain ratio
+    sortedFinalArray = sorted(finalArray, key=itemgetter(1), reverse =True)
 
 
-    # need to cycle through attribute metadata create dict {name: index}
-    finaldict = {}
-    for i,d in enumerate(attribute_metadata):
-        # should make it so that {winner : 0} etc
-        #print d.values()[0]
+    for i, tup in enumerate(sortedFinalArray):
 
-        finaldict[d.values()[1]] = i
+        # first element of sortedFinalArray has highest gain ratio
+        # if this elements gaion ratio is 0 we can assume that all other gain ratios are 0
+        #print sortedFinalArray
+        if sortedFinalArray[i][1] == 0:
+            return (False, False)
+        
+        # element with highest gain ratio is nominal (i.e. has False for split value)
+        # want to return (index, False)
+        if sortedFinalArray[i][2] == False:
+            return (sortedFinalArray[i][0], False)
 
-    listOfKeys = finaldict.keys()
+        # here we are left with the numeric attribute (index, split value)
+        if numerical_splits_count[sortedFinalArray[i][0]] > 0:
 
-    maxGainRatio = 0
-    maxAttribute = False
-    maxAttrSplitValue = [0]
-    for e in range(len(finalArray)):
+            return (sortedFinalArray[i][0], sortedFinalArray[i][2])
 
-        temp = finalArray[e]
+    return (False, False)
 
-        attributeName = temp[0]
-        print attributeName
-        if finaldict[attributeName] == 0:
-            print "SKIPPING"
-            continue
-        # gainDict is dict where {gainRatio: False/splitvalue}
-        gainThreshold = temp[1]
-        # gain_ratio is value of gain ratio
-        gain_ratio = gainThreshold[0]
-
-        if gain_ratio >= maxGainRatio:
-            maxGainRatio = gain_ratio
-            maxAttribute = attributeName
-            # this will either be False of the splitValue
-
-            maxAttrSplitValue[0] = gainThreshold[1]
-
-
-
-
-    if maxAttribute == False:
-        print "false"
-        print data_set
-
-    for key in listOfKeys:
-        if maxAttribute == key:
-            print "Max:", maxAttribute
-            maxAttribute = finaldict[key]
-
-
-
-
-    if maxAttrSplitValue[0] == 0:
-       del maxAttrSplitValue[0]
-       maxAttrSplitValue.append(False)
-
-    if numerical_splits_count[maxAttribute] == 0:
-        return False
-
-    #return (maxAttribute, maxAttrSplitValue[0])
-    return (maxAttribute, maxAttrSplitValue[0])
-
-    # best attribute is calculated using gain_ratio_nominal or gain_ratio_numeric
-
-    # if attribute is numerical send split count through
+    
 
 
 # # ======== Test Cases =============================
